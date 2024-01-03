@@ -3,6 +3,7 @@
 #include "encryption/Key.h"
 #include "util/Hash.h"
 #include <numeric>
+#include <format>
 
 Key::key_type Key::get_standard_key() noexcept {
 	auto key = key_type{};
@@ -14,15 +15,22 @@ Key::key_type Key::get_standard_key() noexcept {
 }
 
 Key::key_type Key::produce_new_key(Key::key_type keyType) noexcept {
-    auto new_key = keyType;
-    for(auto i = 0; i < 6; i++) {
-        auto to_hash = uint64_t {};
+    for (auto i = 0; i < 6; i++) {
+        auto to_hash = uint64_t{};
         for(auto j = 0; j < 8; j++) {
-            to_hash += keyType[i * 8+ j] << (64 - ((j + 1) * 8));
+            uint64_t number = keyType[i * 8 + j];
+            number <<= j * 8;
+            to_hash |= number;
+
         }
-        new_key[i] = Hash::hash(to_hash);
+        //std::cout << std::bitset<64>(to_hash) << "\n";
+        auto hashed = Hash::hash(to_hash);
+        for (auto j = 0; j < 8; j++) {
+            keyType[i * 8 + j] = hashed;
+            hashed >>= 8;
+        }
     }
-    return new_key;
+    return keyType;
 }
 
 std::uint64_t Key::hash(Key::key_type keyType) noexcept {
@@ -50,7 +58,13 @@ std::uint64_t Key::get_smallest_hash(std::span<key_type const> range) noexcept {
     for(auto key_type : range) {
 
         auto val = hash(key_type);
-        if(val < min) min = val;
+        std::string s = std::format("{:x}", val);
+        std::cout << s << "\n";
+        if(val < min){
+
+            std::cout << "Overwrite: " << std::format("{:x}", val) << "<" << std::format("{:x}", min) << "\n";
+            min = val;
+        }
     }
     return min;
 }
