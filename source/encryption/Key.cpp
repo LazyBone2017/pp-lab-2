@@ -58,11 +58,7 @@ std::uint64_t Key::get_smallest_hash(std::span<key_type const> range) noexcept {
     for(auto key_type : range) {
 
         auto val = hash(key_type);
-        std::string s = std::format("{:x}", val);
-        std::cout << s << "\n";
         if(val < min){
-
-            std::cout << "Overwrite: " << std::format("{:x}", val) << "<" << std::format("{:x}", min) << "\n";
             min = val;
         }
     }
@@ -70,5 +66,30 @@ std::uint64_t Key::get_smallest_hash(std::span<key_type const> range) noexcept {
 }
 
 std::uint64_t Key::get_smallest_hash_parallel(std::span<const key_type> range, int thread_count) noexcept {
-    return uint64_t {};
+    auto min = std::numeric_limits<std::uint64_t>::max();
+#pragma omp parallel for
+    for(auto key_type : range) {
+
+        auto val = hash(key_type);
+        if(val < min){
+            min = val;
+        }
+    }
+    return min;
+}
+
+Key::key_type Key::find_key(std::span<const key_type> range, std::uint64_t target) noexcept {
+    for(auto key : range) {
+        if(hash(key) == target) return key;
+    }
+    return get_standard_key();
+}
+
+Key::key_type Key::find_key_parallel(std::span<const key_type> range, std::uint64_t target, int threads) noexcept {
+    auto captured = get_standard_key();
+    #pragma omp parallel for num_threads(threads) shared(captured)
+    for(auto key : range) {
+        if(hash(key) == target) captured = key;
+    }
+    return captured;
 }
